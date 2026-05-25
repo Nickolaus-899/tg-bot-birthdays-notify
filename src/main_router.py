@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from src.handlers.subscribe import subscribe_entry, unsubscribe_entry
 from src.handlers.birthdays import router as birthday_router
-from src.db import extract_user, BIRTHDAYS_FILE
+from src.db import extract_user, is_admin, BIRTHDAYS_FILE
 from src.storage import read_json
 
 
@@ -77,6 +77,13 @@ async def cmd_start(message: Message) -> None:
 
 
 
+MONTH_NAMES = {
+    1: ("Январь", "❄️"), 2: ("Февраль", "🌨️"), 3: ("Март", "🌱"),
+    4: ("Апрель", "🌸"), 5: ("Май", "🌻"), 6: ("Июнь", "☀️"),
+    7: ("Июль", "🏖️"), 8: ("Август", "🍉"), 9: ("Сентябрь", "🍂"),
+    10: ("Октябрь", "🎃"), 11: ("Ноябрь", "🌧️"), 12: ("Декабрь", "🎄")
+}
+
 @router.message(Command("list"))
 async def cmd_list(message: Message) -> None:
     birthdays: dict = read_json(BIRTHDAYS_FILE, default={})
@@ -84,12 +91,26 @@ async def cmd_list(message: Message) -> None:
         await message.answer("📭 Список дней рождения пуст.")
         return
 
-    lines = ["🎂 Список дней рождения:\n"]
-    for bid, entry in sorted(birthdays.items(), key=lambda x: int(x[0])):
-        month, day = entry["birthday"].split("-")
-        lines.append(f"  [{bid}] {entry['name']} — {day}.{month}")
+    admin = is_admin(message.from_user.id)
 
-    await message.answer("\n".join(lines))
+    by_month: dict[int, list] = {}
+    for bid, entry in birthdays.items():
+        month, day = entry["birthday"].split("-")
+        month, day = int(month), int(day)
+        by_month.setdefault(month, []).append((day, bid, entry["name"]))
+
+    lines = ["🎂 Список дней рождения:\n"]
+    for month_num in sorted(by_month.keys()):
+        name_str, emoji = MONTH_NAMES[month_num]
+        lines.append(f"{emoji} *{name_str}*")
+        for day, bid, name in sorted(by_month[month_num]):
+            if admin:
+                lines.append(f"  {day} {name} — ID: {bid}")
+            else:
+                lines.append(f"  {day} {name}")
+        lines.append("")
+
+    await message.answer("\n".join(lines).strip(), parse_mode="Markdown")
 
 
 # ── wire everything into the dispatcher ───────────────────────────────────────

@@ -80,8 +80,8 @@ async def add_get_name(message: Message, state: FSMContext) -> None:
     await state.update_data(name=name)
     await state.set_state(AddBirthdayStates.waiting_for_date)
     await message.answer(
-        f"📅 Введите дату рождения для «{name}» в формате ДД.ММ или ДД.ММ.ГГГГ\n"
-        "(например: 25.05 или 25.05.2024):"
+        f"📅 Введите дату рождения для «{name}» в формате ДД.ММ\n"
+        "(например: 25.05):"
     )
 
 
@@ -91,7 +91,7 @@ async def add_get_date(message: Message, state: FSMContext) -> None:
     if not date_str:
         await message.answer(
             "❌ Неверный формат даты. Введите дату в формате ДД.ММ или ДД.ММ.ГГГГ\n"
-            "(например: 25.05 или 25.05.1990):"
+            "(например: 25.05):"
         )
         return
 
