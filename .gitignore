@@ -1,0 +1,11 @@
+.env
+__pycache__
+data/*
+
+create_docker.sh
+
+*.pyc
+*.pyo
+.DS_Store
+
+myenv/*
