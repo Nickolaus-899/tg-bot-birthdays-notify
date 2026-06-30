@@ -21,7 +21,7 @@ async def subscribe_entry(message: Message, state: FSMContext) -> None:
     write_json(SUBSCRIBERS_FILE, subscribers)
     await message.answer(
         "🎉 Вы успешно подписались на уведомления о днях рождения!\n"
-        "Вы будете получать сообщения каждый день в 10:00, когда у кого-то день рождения."
+        "Вы будете получать сообщения каждый день в 8:00, когда у кого-то день рождения."
     )
 
 

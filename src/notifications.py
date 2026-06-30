@@ -49,10 +49,10 @@ def start_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         check_birthdays,
-        trigger=CronTrigger(hour=7, minute=0),
+        trigger=CronTrigger(hour=5, minute=0),
         id="birthday_check",
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("Scheduler is started (daily at 10:00).")
+    logger.info("Scheduler is started (daily at 8:00).")
     return scheduler
