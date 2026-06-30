@@ -14,7 +14,7 @@ async def subscribe_entry(message: Message, state: FSMContext) -> None:
     subscribers: list = read_json(SUBSCRIBERS_FILE, default=[])
 
     if chat_id in subscribers:
-        await message.answer("✅ Вы уже подписаны на уведомления о днях рождения.")
+        await message.answer("✅ Вы уже подписаны на уведомления о днях рождения в 8:00.")
         return
 
     subscribers.append(chat_id)
