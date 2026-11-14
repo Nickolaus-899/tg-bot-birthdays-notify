@@ -11,7 +11,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
-from src.db import BIRTHDAYS_FILE, COUNTER_FILE, is_admin
+from src.db import BIRTHDAYS_FILE, COUNTER_FILE, is_admin, get_owner
 from src.storage import read_json, write_json
 
 router = Router()
@@ -66,13 +66,19 @@ async def cmd_add(message: Message, state: FSMContext) -> None:
 
     await state.set_state(AddBirthdayStates.waiting_for_name)
     await message.answer(
-        "➕ Добавление дня рождения.\n\nВведите имя (например: Иван Иванов):"
+        "➕ Добавление дня рождения.\nВведите имя (например: Иван Иванов):\n\nДля отмены нажмите /cancel"
     )
 
 
 @router.message(AddBirthdayStates.waiting_for_name)
 async def add_get_name(message: Message, state: FSMContext) -> None:
     name = message.text.strip()
+
+    if name == "/cancel":
+        await message.answer("Операция отменена")
+        await state.clear()
+        return
+
     if not name:
         await message.answer("❌ Имя не может быть пустым. Попробуйте ещё раз:")
         return
@@ -81,17 +87,24 @@ async def add_get_name(message: Message, state: FSMContext) -> None:
     await state.set_state(AddBirthdayStates.waiting_for_date)
     await message.answer(
         f"📅 Введите дату рождения для «{name}» в формате ДД.ММ\n"
-        "(например: 25.05):"
+        "(например: 25.05):\n\n"
+        "Для отмены нажмите /cancel"
     )
 
 
 @router.message(AddBirthdayStates.waiting_for_date)
 async def add_get_date(message: Message, state: FSMContext) -> None:
+    if message.text.strip() == "/cancel":
+        await message.answer("Операция отменена")
+        await state.clear()
+        return
+
     date_str = _parse_date(message.text)
     if not date_str:
         await message.answer(
-            "❌ Неверный формат даты. Введите дату в формате ДД.ММ или ДД.ММ.ГГГГ\n"
-            "(например: 25.05):"
+            "❌ Неверный формат даты. Введите дату в формате ДД.ММ или ДД.ММ.ГГГГ\n\n"
+            "(например: 25.05):\n\n"
+            "Для отмены нажмите /cancel"
         )
         return
 
@@ -113,6 +126,9 @@ async def add_get_date(message: Message, state: FSMContext) -> None:
         f"🎂 Дата: {day}.{month}"
     )
 
+    msg_for_owner = f"Админ добавил новый день рождения:\n[{new_id}] {name}"
+    await notify_owner(msg_for_owner, message)
+
 
 # ── /remove ────────────────────────────────────────────────────────────────────
 
@@ -131,7 +147,7 @@ async def cmd_remove(message: Message, state: FSMContext) -> None:
     for bid, entry in sorted(birthdays.items(), key=lambda x: int(x[0])):
         month, day = entry["birthday"].split("-")
         lines.append(f"  [{bid}] {entry['name']} — {day}.{month}")
-    lines.append("\nВведите ID записи, которую хотите удалить:")
+    lines.append("\nВведите ID записи, которую хотите удалить:\n\nДля отмены нажмите /cancel")
 
     await state.set_state(RemoveBirthdayStates.waiting_for_id)
     await message.answer("\n".join(lines))
@@ -140,6 +156,12 @@ async def cmd_remove(message: Message, state: FSMContext) -> None:
 @router.message(RemoveBirthdayStates.waiting_for_id)
 async def remove_get_id(message: Message, state: FSMContext) -> None:
     raw_id = message.text.strip()
+    if raw_id == "/cancel":
+        await message.answer("Операция отменена")
+        await state.clear()
+        return
+
+
     birthdays = read_json(BIRTHDAYS_FILE, default={})
 
     if raw_id not in birthdays:
@@ -158,3 +180,11 @@ async def remove_get_id(message: Message, state: FSMContext) -> None:
         f"👤 Имя: {entry['name']}\n"
         f"🎂 Дата: {day}.{month}"
     )
+
+    msg_for_owner = f"Админ удалил день рождения:\n[{raw_id}] {entry['name']}"
+    await notify_owner(msg_for_owner, message)
+
+
+async def notify_owner(text: str, message: Message) -> None:
+    owner_id = get_owner()
+    await message.bot.send_message(owner_id, f"{message.from_user.full_name} (ID: {message.from_user.id}):\n\n{text}")

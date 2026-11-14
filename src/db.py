@@ -10,6 +10,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 BIRTHDAYS_FILE = os.path.join(DATA_DIR, "birthdays.json")
 SUBSCRIBERS_FILE = os.path.join(DATA_DIR, "subscribers.json")
 ADMINS_FILE = os.path.join(DATA_DIR, "admins.json")
+OWNER_FILE = os.path.join(DATA_DIR, "owner.json")
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 
 
@@ -44,6 +45,17 @@ def init_db(admin_id: int | None = None) -> None:
 def is_admin(user_id: int) -> bool:
     admins = read_json(ADMINS_FILE, default=[])
     return user_id in admins
+
+def is_subscriber(user_id: int) -> bool:
+    subscribers = read_json(SUBSCRIBERS_FILE, default=[])
+    return user_id in subscribers
+
+def get_owner() -> int:
+    owners_data = read_json(OWNER_FILE, default=[])
+    if len(owners_data) == 0:
+        return -1
+    
+    return owners_data[0]
 
 
 def extract_user(key: str, value) -> bool:

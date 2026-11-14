@@ -1,12 +1,13 @@
 from src import router, dp
+from aiogram import F
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import State, StatesGroup, default_state
 
 from src.handlers.subscribe import subscribe_entry, unsubscribe_entry
-from src.handlers.birthdays import router as birthday_router
-from src.db import extract_user, is_admin, BIRTHDAYS_FILE
+from src.handlers.birthdays import router as birthday_router, notify_owner
+from src.db import extract_user, is_admin, is_subscriber, BIRTHDAYS_FILE
 from src.storage import read_json
 
 
@@ -47,12 +48,15 @@ async def cmd_help(message: Message) -> None:
         "👑 Команды для администраторов:\n"
         "/add — добавить день рождения\n"
         "/remove — удалить день рождения по ID\n"
+        "/listid — показать список всех дней рождения вместе с ID\n"
     )
 
 
 @router.message(Command("subscribe"))
 async def cmd_subscribe(message: Message, state: FSMContext) -> None:
-    await subscribe_entry(message, state)
+    # await subscribe_entry(message, state)
+    await message.answer("Функция недоступна.")
+    await notify_owner("Запрос на подписку", message)
 
 
 @router.message(Command("unsubscribe"))
@@ -86,12 +90,28 @@ MONTH_NAMES = {
 
 @router.message(Command("list"))
 async def cmd_list(message: Message) -> None:
+    await display_list(message=message, show_id=False)
+
+@router.message(Command("listid"))
+async def cmd_list_id(message: Message) -> None:
+    if not is_admin(message.from_user.id):
+        await message.answer("🚫 У вас нет прав для выполнения этой команды.")
+        return
+
+    await display_list(message=message, show_id=True)
+
+
+async def display_list(message: Message, show_id: bool) -> None:
+    if not is_subscriber(message.from_user.id):
+        await message.answer("🚫 У вас нет прав для выполнения этой команды.")
+        return
+    
     birthdays: dict = read_json(BIRTHDAYS_FILE, default={})
     if not birthdays:
         await message.answer("📭 Список дней рождения пуст.")
         return
 
-    admin = is_admin(message.from_user.id)
+    # admin = is_admin(message.from_user.id)
 
     by_month: dict[int, list] = {}
     for bid, entry in birthdays.items():
@@ -104,13 +124,21 @@ async def cmd_list(message: Message) -> None:
         name_str, emoji = MONTH_NAMES[month_num]
         lines.append(f"{emoji} *{name_str}*")
         for day, bid, name in sorted(by_month[month_num]):
-            if admin:
+            if show_id:
                 lines.append(f"  {day} {name} — ID: {bid}")
             else:
                 lines.append(f"  {day} {name}")
         lines.append("")
 
     await message.answer("\n".join(lines).strip(), parse_mode="Markdown")
+
+
+
+@router.message(F.text, default_state)
+async def fallback(message: Message) -> None:
+    await message.answer("❓ Неизвестная команда. Введите /help, чтобы увидеть список команд.")
+
+    await notify_owner(f" Текстовое сообщение: {message.text}", message)
 
 
 # ── wire everything into the dispatcher ───────────────────────────────────────

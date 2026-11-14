@@ -17,8 +17,8 @@ async def subscribe_entry(message: Message, state: FSMContext) -> None:
         await message.answer("✅ Вы уже подписаны на уведомления о днях рождения в 6:00.")
         return
 
-    subscribers.append(chat_id)
-    write_json(SUBSCRIBERS_FILE, subscribers)
+    # subscribers.append(chat_id)
+    # write_json(SUBSCRIBERS_FILE, subscribers)
     await message.answer(
         "🎉 Вы успешно подписались на уведомления о днях рождения!\n"
         "Вы будете получать сообщения каждый день в 6:00, когда у кого-то день рождения."
